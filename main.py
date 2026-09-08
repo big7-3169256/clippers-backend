@@ -114,6 +114,9 @@ def _download_youtube_video(url: str, dest: Path) -> None:
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
+        # Pretending to be the YouTube Android app is a common, effective
+        # workaround for the web bot-check, independent of cookies.
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
     }
 
     cookies_file = os.environ.get("YTDLP_COOKIES_FILE")
