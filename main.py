@@ -100,17 +100,26 @@ def _download_direct_video(url: str, dest: Path) -> None:
 
 def _download_youtube_video(url: str, dest: Path) -> None:
     """Download a YouTube video via yt-dlp, merging separate video/audio
-    streams (the norm for most videos now) into a single mp4 with ffmpeg."""
+    streams (the norm for most videos now) into a single mp4 with ffmpeg.
+
+    Cloud hosts (like Render) often get blocked by YouTube's bot
+    detection since the request comes from a data-center IP. If a
+    cookies file is configured via YTDLP_COOKIES_FILE, we pass it along
+    so the request looks like it's coming from a real logged-in browser.
+    """
     ydl_opts = {
-        # Best video + best audio, merged into mp4. Falls back to a
-        # single combined stream if that's all that's available.
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         "merge_output_format": "mp4",
-        "outtmpl": str(dest.with_suffix("")),  # yt-dlp appends the extension itself
+        "outtmpl": str(dest.with_suffix("")),
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
     }
+
+    cookies_file = os.environ.get("YTDLP_COOKIES_FILE")
+    if cookies_file and Path(cookies_file).exists():
+        ydl_opts["cookiefile"] = cookies_file
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
