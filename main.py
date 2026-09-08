@@ -118,7 +118,12 @@ def _download_youtube_video(url: str, dest: Path) -> None:
 
     cookies_file = os.environ.get("YTDLP_COOKIES_FILE")
     if cookies_file and Path(cookies_file).exists():
-        ydl_opts["cookiefile"] = cookies_file
+        # yt-dlp writes updated cookies back to this path on close(), but
+        # Render's Secret Files are mounted read-only. Copy to a writable
+        # temp file so yt-dlp can read AND write without erroring.
+        writable_cookies = Path(tempfile.gettempdir()) / "yt_dlp_cookies.txt"
+        shutil.copy(cookies_file, writable_cookies)
+        ydl_opts["cookiefile"] = str(writable_cookies)
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
