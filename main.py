@@ -186,15 +186,14 @@ def _build_filtergraph(vertical: bool, caption: Optional[str]) -> str:
         )
 
     if vertical:
-        # 720x1280 instead of 1080x1920: still crisp for social clips, but
-        # roughly half the pixels to process -- meaningfully lower memory
-        # use, which matters on constrained hosts (e.g. free-tier Render).
+        # Plain black letterbox instead of a blurred background: no split,
+        # no blur, no compositing -- dramatically lighter on CPU. Blur in
+        # particular is one of ffmpeg's most expensive filters, and it was
+        # too slow on a constrained free-tier host. Still never crops the
+        # subject, just less visually polished than the blurred version.
         return (
-            "[0:v]split=2[base][fg];"
-            "[base]scale=720:1280:force_original_aspect_ratio=increase,"
-            "crop=720:1280,gblur=sigma=15[bg];"
-            "[fg]scale=720:-2[fgscaled];"
-            "[bg][fgscaled]overlay=(W-w)/2:(H-h)/2"
+            "[0:v]scale=720:1280:force_original_aspect_ratio=decrease,"
+            "pad=720:1280:(ow-iw)/2:(oh-ih)/2:color=black"
             f"{caption_filter}[outv]"
         )
 
