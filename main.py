@@ -186,11 +186,14 @@ def _build_filtergraph(vertical: bool, caption: Optional[str]) -> str:
         )
 
     if vertical:
+        # 720x1280 instead of 1080x1920: still crisp for social clips, but
+        # roughly half the pixels to process -- meaningfully lower memory
+        # use, which matters on constrained hosts (e.g. free-tier Render).
         return (
             "[0:v]split=2[base][fg];"
-            "[base]scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,gblur=sigma=25[bg];"
-            "[fg]scale=1080:-2[fgscaled];"
+            "[base]scale=720:1280:force_original_aspect_ratio=increase,"
+            "crop=720:1280,gblur=sigma=15[bg];"
+            "[fg]scale=720:-2[fgscaled];"
             "[bg][fgscaled]overlay=(W-w)/2:(H-h)/2"
             f"{caption_filter}[outv]"
         )
@@ -221,8 +224,11 @@ def _cut_clip(
         "-map", "[outv]",
         "-map", "0:a?",
         "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-crf", "23",
+        # ultrafast trades some compression efficiency for much lower
+        # memory/CPU use -- important headroom on a 512MB instance.
+        "-preset", "ultrafast",
+        "-crf", "26",
+        "-threads", "1",
         "-c:a", "aac",
         "-b:a", "128k",
         str(out_path),
